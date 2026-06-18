@@ -1,6 +1,6 @@
 .venv/
 .env
-.env-example
+.env.example
 sources.csv
 sources-all.csv
 **/__pycache__/**
