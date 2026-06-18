@@ -1,0 +1,35 @@
+name: Weekly Event Digest
+on:
+  schedule:
+    - cron: '0 10 * * 0'  # Every Sunday at 10:00 AM UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Run scraper & generate digest
+        env:
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SOURCES_CSV_PATH: ./sources.csv
+          EVENT_LOOKAHEAD_DAYS: 60
+          DATABASE_URL: sqlite:///./events.db
+          LOG_LEVEL: INFO
+        run: python -m src.main

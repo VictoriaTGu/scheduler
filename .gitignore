@@ -1,0 +1,6 @@
+.venv/
+.env
+.env-example
+sources.csv
+sources-all.csv
+**/__pycache__/**
