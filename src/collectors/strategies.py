@@ -139,22 +139,40 @@ class GenericListingPageStrategy(ExtractionStrategy):
         for selector in event_selectors:
             containers = soup.select(selector)
             if containers:
-                logger.debug(f"Found {len(containers)} event containers with selector: {selector}")
+                logger.debug(
+                    f"Found {len(containers)} event containers with selector: {selector}",
+                    extra={"source": source.source_name}
+                )
                 for container in containers:
                     try:
                         event = self._extract_event_from_container(container, source)
                         if event:
                             events.append(event)
                     except Exception as e:
-                        logger.debug(f"Failed to extract event from container: {str(e)}")
+                        logger.debug(
+                            f"Failed to extract event from container: {str(e)}",
+                            extra={"source": source.source_name}
+                        )
                 
                 if events:
+                    logger.info(
+                        f"Successfully extracted {len(events)} events using selector strategy",
+                        extra={"source": source.source_name}
+                    )
                     return events
         
         # Fallback: look for any links with event-like text
         if not events:
-            logger.debug("No event containers found, trying fallback link extraction")
+            logger.debug(
+                "No event containers found, trying fallback link extraction",
+                extra={"source": source.source_name}
+            )
             events = self._extract_from_links(soup, source)
+            if events:
+                logger.info(
+                    f"Successfully extracted {len(events)} events using fallback link strategy",
+                    extra={"source": source.source_name}
+                )
         
         return events
 
@@ -176,10 +194,13 @@ class GenericListingPageStrategy(ExtractionStrategy):
         if not title or len(title) < 3:
             return None
         
-        # Try to find date
+        # Try to find date and time
         start_datetime = self._extract_date_from_container(container)
         if not start_datetime:
             return None
+        
+        # Try to extract end time if available
+        end_datetime = self._extract_end_time_from_container(container, start_datetime)
         
         # Try to find URL
         event_url = ""
@@ -203,7 +224,7 @@ class GenericListingPageStrategy(ExtractionStrategy):
                 title=title,
                 description=description or None,
                 start_datetime=start_datetime,
-                end_datetime=None,
+                end_datetime=end_datetime,
                 venue_name=None,
                 city="Unknown",
                 state="Unknown",
@@ -232,17 +253,44 @@ class GenericListingPageStrategy(ExtractionStrategy):
         # Try to find date in text
         text = container.get_text()
         
-        # Common date patterns: "Jan 15", "January 15, 2026", "15/01/2026", etc.
-        date_patterns = [
+        # Enhanced patterns that capture date AND time information
+        # These patterns are prioritized from most specific to least specific
+        datetime_patterns = [
+            # Full date+time with explicit separators: "June 19, 2026 @ 9:00 pm"
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\s+[at@]\s+\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)',
+            # Date+time with @ separator: "June 19 @ 9:00 pm"
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\s+[at@]\s+\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)',
+            # Numeric date+time: "6/19/2026 7:30 pm" or "2026-06-19 7:30 pm"
+            r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\s+\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?',
+            r'\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)?',
+            # Month name with day and optional year (less specific - may match wrong times)
             r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:,? \d{4})?',
-            r'\d{1,2}/\d{1,2}/\d{2,4}',
+            # Numeric dates without time
+            r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}',
             r'\d{4}-\d{2}-\d{2}',
         ]
         
-        for pattern in date_patterns:
+        # For the last few patterns (month name without time), be more careful
+        # Only use them if we can find them clearly separated from other content
+        for pattern_idx, pattern in enumerate(datetime_patterns):
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 date_str = match.group(0)
+                
+                # For patterns without explicit time (indices >= 4), 
+                # check if there's obvious junk before/after that suggests a false positive
+                if pattern_idx >= 4:
+                    # Check context around the match
+                    start = max(0, match.start() - 20)
+                    end = min(len(text), match.end() + 20)
+                    context = text[start:end]
+                    
+                    # Avoid matches where the date is mixed with random numbers/symbols
+                    # that might indicate it's not actually an event date
+                    if re.search(r'\d{1,2}\s*:\s*\d{2}(?!\s*(?:am|pm|AM|PM))', context[max(0, 20-start):]):
+                        # There's a time-like pattern that's not am/pm, this might be a false positive
+                        continue
+                
                 dt = self._parse_datetime(date_str)
                 if dt:
                     # If no year specified, assume current or next year
@@ -250,6 +298,46 @@ class GenericListingPageStrategy(ExtractionStrategy):
                         now = datetime.utcnow()
                         dt = dt.replace(year=now.year if dt.month >= now.month else now.year + 1)
                     return dt
+        
+        return None
+
+    def _extract_end_time_from_container(self, container, start_datetime: datetime) -> Optional[datetime]:
+        """Extract end time from container if available (for time ranges)."""
+        if not start_datetime:
+            return None
+        
+        text = container.get_text()
+        
+        # Look for time range patterns: "9:00 pm - 11:00 pm" or "7pm - 9pm"
+        time_range_pattern = r'-\s*(\d{1,2}):?(\d{2})?\s*(am|pm|AM|PM)'
+        match = re.search(time_range_pattern, text)
+        
+        if match:
+            hour_str = match.group(1)
+            minute_str = match.group(2) or "00"
+            am_pm = match.group(3).lower()
+            
+            try:
+                hour = int(hour_str)
+                minute = int(minute_str)
+                
+                # Convert to 24-hour format
+                if am_pm == 'pm' and hour != 12:
+                    hour += 12
+                elif am_pm == 'am' and hour == 12:
+                    hour = 0
+                
+                # Create end datetime with the same date as start, but different time
+                end_datetime = start_datetime.replace(hour=hour, minute=minute, second=0)
+                
+                # If end time is earlier than start time, assume it's the next day
+                if end_datetime <= start_datetime:
+                    end_datetime = end_datetime.replace(day=end_datetime.day + 1)
+                
+                return end_datetime
+            except Exception as e:
+                logger.debug(f"Failed to parse end time: {str(e)}")
+                return None
         
         return None
 
@@ -262,21 +350,27 @@ class GenericListingPageStrategy(ExtractionStrategy):
             text = link.get_text(strip=True).lower()
             if any(kw in text for kw in keywords) and len(text) > 5:
                 try:
-                    event = Event(
-                        title=link.get_text(strip=True)[:100],
-                        start_datetime=datetime.utcnow() + timedelta(days=30),  # Default to 30 days out
-                        venue_name=None,
-                        city="Unknown",
-                        state="Unknown",
-                        event_url=link['href'],
-                        source_id=source.id or 0,
-                        region_tag="Other",
-                    )
-                    events.append(normalize_event(event, source))
-                    if len(events) >= 5:  # Limit to avoid noise
-                        break
-                except Exception:
-                    pass
+                    # Only extract if we can find some date information in the page
+                    # Don't use hardcoded default dates
+                    parent = link.find_parent(['div', 'li', 'article', 'section'])
+                    if parent:
+                        date = self._extract_date_from_container(parent)
+                        if date:  # Only extract if we found a date
+                            event = Event(
+                                title=link.get_text(strip=True)[:100],
+                                start_datetime=date,
+                                venue_name=None,
+                                city="Unknown",
+                                state="Unknown",
+                                event_url=link['href'],
+                                source_id=source.id or 0,
+                                region_tag="Other",
+                            )
+                            events.append(normalize_event(event, source))
+                            if len(events) >= 5:  # Limit to avoid noise
+                                break
+                except Exception as e:
+                    logger.debug(f"Failed to extract from link: {str(e)}")
         
         return events
 
@@ -285,13 +379,25 @@ class GenericListingPageStrategy(ExtractionStrategy):
         if not date_str:
             return None
         
+        # Clean up the string - remove common separators that might interfere
+        date_str = date_str.strip()
+        
         try:
-            return dateutil_parser.parse(date_str)
+            dt = dateutil_parser.parse(date_str, fuzzy=False)
+            return dt
         except Exception:
             try:
-                return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                # Try with fuzzy parsing as fallback (allows extra text)
+                dt = dateutil_parser.parse(date_str, fuzzy=True)
+                # Only accept if the parsed datetime seems reasonable
+                # (not in year 1900 or 2000 unless explicitly specified)
+                if dt.year >= 2020:
+                    return dt
             except Exception:
-                return None
+                try:
+                    return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                except Exception:
+                    return None
 
     def _get_domain(self, url: str) -> str:
         """Extract domain from URL."""

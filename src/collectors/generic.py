@@ -70,7 +70,6 @@ class GenericCollector(EventCollector):
             base_url,  # Homepage first
             f"{base_url}/events",  # Most common pattern
             f"{base_url}/calendar",  # Most common pattern
-            f"{base_url}/tickets",  # Most common pattern
         ]
 
     async def _fetch_page(self, url: str) -> str:
