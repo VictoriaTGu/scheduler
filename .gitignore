@@ -4,3 +4,4 @@
 sources.csv
 sources-all.csv
 **/__pycache__/**
+events.db

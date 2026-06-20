@@ -60,6 +60,8 @@ class ScrapeRun(BaseModel):
     events_updated: int = 0
     failures_count: int = 0
     error_summary: Optional[str] = None
+    external_run_id: Optional[str] = None  # For Apify runs
+    external_platform: Optional[str] = None  # e.g., "facebook_events", "meetup", "eventbrite"
 
     class Config:
         from_attributes = True

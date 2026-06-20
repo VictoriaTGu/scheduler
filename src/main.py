@@ -62,8 +62,26 @@ async def load_sources_from_csv(storage: SQLiteRepository, csv_path: str) -> Non
         logger.error(f"Error loading sources from CSV: {str(e)}")
         raise
 
-    
 
+async def load_discovery_config(config_path: Optional[str]) -> Optional[dict]:
+    """Load discovery configuration from YAML file."""
+    if not config_path:
+        logger.info("No discovery config path provided")
+        return None
+    
+    config_file = Path(config_path)
+    if not config_file.exists():
+        logger.warning(f"Discovery config file not found: {config_path}")
+        return None
+    
+    try:
+        from src.config.discovery_settings import load_discovery_config as load_config
+        config = load_config(config_path)
+        logger.info("Loaded discovery configuration", extra={"path": config_path})
+        return config.model_dump() if hasattr(config, 'model_dump') else config
+    except Exception as e:
+        logger.error(f"Error loading discovery config: {str(e)}")
+        return None
 
 
 async def main(mode: str = "full", dry_run: bool = False):
@@ -84,12 +102,30 @@ async def main(mode: str = "full", dry_run: bool = False):
         # Initialize storage
         storage = SQLiteRepository(settings.database_url.replace("sqlite:///", ""))
 
-        # Load sources from CSV
-        await load_sources_from_csv(storage, settings.sources_csv_path or "./sources.csv")
+        # Initialize Apify client if configured
+        apify_client = None
+        discovery_config = None
+
+        # Discovery config is now the source of truth for collection sources.
+        discovery_config_path = settings.discovery_sources_path or "./config/discovery_sources.yaml"
+        discovery_config = await load_discovery_config(discovery_config_path)
+        if not discovery_config:
+            raise ValueError(f"Discovery config is required and must include sources: {discovery_config_path}")
+
+        if settings.apify_api_token:
+            from src.services.apify_client import ApifyClient
+            apify_client = ApifyClient(
+                api_token=settings.apify_api_token,
+                timeout_seconds=settings.apify_timeout_seconds,
+                max_retries=settings.apify_max_retries
+            )
+            logger.info("Initialized Apify client")
+        else:
+            logger.info("Apify API token not configured, Apify providers will be skipped")
 
         # Collect events from all sources
         logger.info("Starting collection phase")
-        orchestrator = CollectorOrchestrator(storage)
+        orchestrator = CollectorOrchestrator(storage, apify_client, discovery_config)
         await orchestrator.collect_all()
 
         if mode == "collect":

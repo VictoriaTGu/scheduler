@@ -211,8 +211,8 @@ class SQLiteRepository(StorageRepository):
             cursor.execute(
                 """INSERT INTO scrape_runs 
                    (source_id, status, pages_crawled, events_found, events_new, 
-                    events_updated, failures_count, error_summary)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    events_updated, failures_count, error_summary, external_run_id, external_platform)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     run.source_id,
                     run.status,
@@ -222,6 +222,8 @@ class SQLiteRepository(StorageRepository):
                     run.events_updated,
                     run.failures_count,
                     run.error_summary,
+                    run.external_run_id,
+                    run.external_platform,
                 ),
             )
             run.id = cursor.lastrowid
@@ -238,7 +240,7 @@ class SQLiteRepository(StorageRepository):
             cursor.execute(
                 """UPDATE scrape_runs SET status = ?, pages_crawled = ?, events_found = ?,
                    events_new = ?, events_updated = ?, failures_count = ?, error_summary = ?,
-                   finished_at = ? WHERE id = ?""",
+                   external_run_id = ?, external_platform = ?, finished_at = ? WHERE id = ?""",
                 (
                     run.status,
                     run.pages_crawled,
@@ -247,6 +249,8 @@ class SQLiteRepository(StorageRepository):
                     run.events_updated,
                     run.failures_count,
                     run.error_summary,
+                    run.external_run_id,
+                    run.external_platform,
                     run.finished_at,
                     run.id,
                 ),

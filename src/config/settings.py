@@ -23,11 +23,20 @@ class Settings(BaseSettings):
 
     # Event Sources
     sources_csv_path: str | None = "./sources.csv"
-    google_sheet_url: str | None = None
 
     # Event Extraction
     event_lookahead_days: int = 60
     llm_fallback_enabled: bool = False
+
+    # Apify Integration
+    apify_api_token: str | None = None
+    apify_timeout_seconds: int = 300
+    apify_max_retries: int = 3
+    discovery_sources_path: str | None = "./config/discovery_sources.yaml"
+
+    # Cost Controls
+    apify_max_runs_per_week: int = 100
+    apify_max_events_per_source: int = 100
 
     # Storage
     database_url: str = "sqlite:///./events.db"

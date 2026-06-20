@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS scrape_runs (
     events_updated INTEGER DEFAULT 0,
     failures_count INTEGER DEFAULT 0,
     error_summary TEXT,
+    external_run_id TEXT,
+    external_platform TEXT,
     FOREIGN KEY (source_id) REFERENCES sources(id)
 );
 
