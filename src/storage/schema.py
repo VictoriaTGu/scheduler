@@ -82,3 +82,24 @@ def init_db(db_path: str) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+def ensure_schema_compatibility(db_path: str) -> None:
+    """Apply lightweight schema upgrades for existing databases."""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Ensure new scrape_runs columns exist for older DBs.
+        cursor.execute("PRAGMA table_info(scrape_runs)")
+        columns = {row[1] for row in cursor.fetchall()}
+
+        if "external_run_id" not in columns:
+            cursor.execute("ALTER TABLE scrape_runs ADD COLUMN external_run_id TEXT")
+
+        if "external_platform" not in columns:
+            cursor.execute("ALTER TABLE scrape_runs ADD COLUMN external_platform TEXT")
+
+        conn.commit()
+    finally:
+        conn.close()

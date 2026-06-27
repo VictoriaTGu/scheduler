@@ -274,10 +274,10 @@ class TestEmailDigestRendering:
         assert html.startswith("<!DOCTYPE html>")
         assert "Start:" in html
         assert "End:" in html
-        assert "[Calendar]" in html
+        assert "[Add to Calendar]" in html
         assert "Start:" in text
         assert "End:" in text
-        assert "Calendar: Google Calendar" in text
+        assert "Calendar: https://calendar.google.com/calendar/r/eventedit?" in text
 
     @pytest.mark.asyncio
     async def test_render_digest_no_events(self):

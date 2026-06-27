@@ -7,7 +7,7 @@ from pathlib import Path
 
 from src.models import Event, Source, ScrapeRun
 from src.storage.repository import StorageRepository
-from src.storage.schema import init_db
+from src.storage.schema import init_db, ensure_schema_compatibility
 
 
 class SQLiteRepository(StorageRepository):
@@ -23,6 +23,8 @@ class SQLiteRepository(StorageRepository):
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         if not Path(self.db_path).exists():
             init_db(self.db_path)
+        # Existing local DBs may predate new columns; apply safe additive migrations.
+        ensure_schema_compatibility(self.db_path)
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get a database connection."""
