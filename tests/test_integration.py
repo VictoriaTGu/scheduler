@@ -272,7 +272,12 @@ class TestEmailDigestRendering:
         assert "Providence" in html
         assert "Newport" in html
         assert html.startswith("<!DOCTYPE html>")
-        assert "calendar.google.com" in html
+        assert "Start:" in html
+        assert "End:" in html
+        assert "[Calendar]" in html
+        assert "Start:" in text
+        assert "End:" in text
+        assert "Calendar: Google Calendar" in text
 
     @pytest.mark.asyncio
     async def test_render_digest_no_events(self):

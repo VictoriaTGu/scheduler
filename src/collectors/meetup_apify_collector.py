@@ -58,8 +58,15 @@ class MeetupProvider(DiscoveryProvider):
             
             actor_input = {
                 "startUrls": [start_url],
-                "maxEventsPerGroup": search_config.get("max_events", 50),
+                "searchKeyword": search_config.get("search_term"),
+                "maxResults": search_config.get("max_events", 50),
+                "city": search_config.get("city", "Providence"),
+                "state": search_config.get("state") or search_config.get("location", "Rhode Island"),
+                "country": search_config.get("country", "US"),
             }
+
+            actor_id = search_config.get("actor_id", "filip_cicvarek/meetup-scraper")
+            actor_build = search_config.get("actor_build")
             
             logger.info(
                 f"Starting Meetup actor for {source.source_name}",
@@ -67,9 +74,10 @@ class MeetupProvider(DiscoveryProvider):
             )
             
             items = await self.apify_client.run_actor(
-                "filip_cicvarek/meetup-scraper",
+                actor_id,
                 actor_input,
                 max_wait_seconds=300,
+                build=actor_build,
             )
             
             logger.info(

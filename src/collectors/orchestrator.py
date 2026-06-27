@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
+from urllib.parse import urlparse
 
 from src.models import Source, ScrapeRun
 from src.collectors.generic import GenericCollector
@@ -17,11 +18,23 @@ logger = logging.getLogger(__name__)
 class CollectorOrchestrator:
     """Orchestrates collection from multiple sources."""
 
-    def __init__(self, storage: StorageRepository, apify_client: Optional[Any] = None, discovery_config: Optional[Any] = None):
+    def __init__(self, storage: StorageRepository, apify_client: Optional[Any] = None, discovery_config: Optional[Any] = None, settings: Optional[Any] = None):
         """Initialize orchestrator."""
         self.storage = storage
         self.apify_client = apify_client
         self.discovery_config = discovery_config
+        self.settings = settings
+
+    def _is_force_playwright(self, url: str) -> bool:
+        """Return True if this URL's domain is in the PLAYWRIGHT_FORCE_DOMAINS list."""
+        if not self.settings:
+            return False
+        force_domains_str = getattr(self.settings, "playwright_force_domains", "") or ""
+        force_domains = [d.strip() for d in force_domains_str.split(",") if d.strip()]
+        if not force_domains:
+            return False
+        hostname = urlparse(url).hostname or ""
+        return any(hostname == d or hostname.endswith("." + d) for d in force_domains)
 
     async def collect_all(self) -> None:
         """Collect events from discovery config sources.
@@ -117,13 +130,10 @@ class CollectorOrchestrator:
                     events = await provider.discover(source, search_config)
                     external_platform = "facebook_events"
 
-            elif source.source_type == "meetup" and self.apify_client and self.discovery_config:
-                from src.collectors.meetup_apify_collector import MeetupProvider
-                provider = MeetupProvider(self.apify_client)
-                search_config = self._get_search_config_for_source(source)
-                if search_config:
-                    events = await provider.discover(source, search_config)
-                    external_platform = "meetup"
+            elif source.source_type == "meetup":
+                from src.collectors.meetup import collect_meetup_events
+                events = await collect_meetup_events(source.source_url, source.id or 0)
+                external_platform = "meetup"
 
             elif source.source_type == "eventbrite" and self.apify_client and self.discovery_config:
                 from src.collectors.eventbrite_apify_collector import EventbriteProvider
@@ -135,7 +145,8 @@ class CollectorOrchestrator:
 
             else:
                 # Use generic collector for "generic" type or fallback
-                collector = GenericCollector(source)
+                force_pw = self._is_force_playwright(source.source_url)
+                collector = GenericCollector(source, force_playwright=force_pw)
                 events = await collector.collect()
 
             # Apply region tagging and generate canonical keys

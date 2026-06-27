@@ -17,6 +17,9 @@ jobs:
       
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
       
       - name: Run scraper & generate digest
         env:
@@ -28,6 +31,8 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PLAYWRIGHT_FORCE_DOMAINS: ${{ vars.PLAYWRIGHT_FORCE_DOMAINS }}
           SOURCES_CSV_PATH: ./sources.csv
           EVENT_LOOKAHEAD_DAYS: 60
           DATABASE_URL: sqlite:///./events.db

@@ -8,6 +8,9 @@ from src.models import Source
 from src.collectors.strategies import GenericListingPageStrategy
 
 
+FIXTURE_YEAR = 2099
+
+
 # Real HTML from https://mbadrivein.com/events/
 MBA_DRIVEIN_HTML = """
 <div class="event-item">
@@ -16,7 +19,7 @@ MBA_DRIVEIN_HTML = """
             Pirates of the Caribbean: The Curse of the Black Pearl
         </a>
     </h3>
-    <p class="event-date">June 19 @ 9:00 pm - 11:00 pm</p>
+    <p class="event-date">June 19, 2099 @ 9:00 pm - 11:00 pm</p>
     <p class="event-location">Wuskenau Beach Pondside, 316 Atlantic Ave, Westerly, RI, United States</p>
     <p class="event-price">$25.00</p>
 </div>
@@ -27,7 +30,7 @@ MBA_DRIVEIN_HTML = """
             Jaws at the Misquamicut Drive-In
         </a>
     </h3>
-    <p class="event-date">June 20 @ 9:00 pm - 11:00 pm</p>
+    <p class="event-date">June 20, 2099 @ 9:00 pm - 11:00 pm</p>
     <p class="event-location">Wuskenau Beach Pondside, 316 Atlantic Ave, Westerly, RI, United States</p>
     <p class="event-price">$25.00</p>
 </div>
@@ -38,7 +41,7 @@ MBA_DRIVEIN_HTML = """
             GREASE at the Misquamicut Drive-In!
         </a>
     </h3>
-    <p class="event-date">June 26 @ 9:00 pm - 11:00 pm</p>
+    <p class="event-date">June 26, 2099 @ 9:00 pm - 11:00 pm</p>
     <p class="event-location">Wuskenau Beach Pondside, 316 Atlantic Ave, Westerly, RI, United States</p>
     <p class="event-price">$25.00</p>
 </div>
@@ -49,7 +52,7 @@ MBA_DRIVEIN_HTML = """
             The Greatest Showman at Misquamicut Drive-In
         </a>
     </h3>
-    <p class="event-date">July 1 @ 9:00 pm - 11:00 pm</p>
+    <p class="event-date">July 1, 2099 @ 9:00 pm - 11:00 pm</p>
     <p class="event-location">316 Atlantic Ave, 316 Atlantic Avenue, Westerly, RI, United States</p>
     <p class="event-price">$25.00</p>
 </div>
@@ -198,7 +201,7 @@ class TestRealHTMLExtraction:
         # Verify dates are in reasonable range (within 6 months)
         for event in events[:2]:
             assert event.start_datetime is not None
-            assert event.start_datetime.year == 2026
+            assert event.start_datetime.year == FIXTURE_YEAR
             assert 6 <= event.start_datetime.month <= 7  # June or July
             print(f"✅ Date extracted: {event.title} → {event.start_datetime}")
 
@@ -253,11 +256,11 @@ class TestRealHTMLExtraction:
             enabled=True,
         )
         
-        # Test HTML with time range format: "June 19 @ 9:00 pm - 11:00 pm"
+        # Test HTML with time range format and explicit year for stability.
         test_html = """
         <div class="event-item">
             <h3 class="event-title">Test Event</h3>
-            <p class="event-date">June 25 @ 7:30 pm - 9:45 pm</p>
+            <p class="event-date">June 25, 2099 @ 7:30 pm - 9:45 pm</p>
         </div>
         """
         

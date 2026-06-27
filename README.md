@@ -53,21 +53,12 @@ EVENT_LOOKAHEAD_DAYS=60
 LOG_LEVEL=INFO
 ```
 
-### 4. Create sources file
-
-Create `sources.csv` with your event sources:
-
-```csv
-source_name,source_url,source_type
-URI Events,https://events.uri.edu,generic
-South County Chamber,https://www.southcountychamber.com/events,generic
-```
-
 ### 5. Run locally (optional)
 
 ```bash
-python -m src.main
+python -m src.main --dry-run
 ```
+usage: main.py [-h] [--mode {full,collect}] [--dry-run] [--mock-data]
 
 ## GitHub Actions Setup
 

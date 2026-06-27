@@ -115,14 +115,14 @@ def _render_html_digest(
             html_parts.append(f'            <div class="city-header">{city_name}</div>\n')
 
             for event in events:
-                time_str = event.start_datetime.strftime("%I:%M %p")
+                start_time_str, end_time_str = _format_event_times(event)
                 cost_str = event.cost or "TBD"
                 source_name = _get_source_name(event)
 
                 html_parts.append(
                     f"""            <div class="event-item">
                 <div class="event-title">{event.title}</div>
-                <div class="event-time">{time_str} • {cost_str}</div>
+                <div class="event-time">Start: {start_time_str} • End: {end_time_str} • {cost_str}</div>
                 <div class="event-details">
                     <strong>Location:</strong> {event.venue_name or event.city}<br>
                     <strong>Source:</strong> {source_name}
@@ -176,13 +176,14 @@ def _render_text_digest(grouped: dict, total_events: int, lookahead_days: int) -
             text_parts.append(f"\n  {city_name}\n")
 
             for event in events:
-                time_str = event.start_datetime.strftime("%I:%M %p")
+                start_time_str, end_time_str = _format_event_times(event)
                 cost_str = event.cost or "TBD"
                 source_name = _get_source_name(event)
 
                 text_parts.append(
                     f"""  • {event.title}
-    Time: {time_str}
+    Start: {start_time_str}
+    End: {end_time_str}
     Cost: {cost_str}
     Location: {event.venue_name or event.city}
     Source: {source_name}
@@ -207,3 +208,10 @@ def _get_source_name(event: Event) -> str:
 
     parsed = urlparse(event.event_url)
     return parsed.netloc.replace("www.", "") if parsed.netloc else "Unknown"
+
+
+def _format_event_times(event: Event) -> tuple[str, str]:
+    """Format event times for display in 12-hour format."""
+    start_time = event.start_datetime.strftime("%I:%M %p")
+    end_time = event.end_datetime.strftime("%I:%M %p") if event.end_datetime else "TBD"
+    return start_time, end_time

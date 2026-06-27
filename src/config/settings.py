@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     event_lookahead_days: int = 60
     llm_fallback_enabled: bool = False
 
+    # OpenAI — used only for targeted time/field extraction fallback
+    openai_api_key: str | None = None
+
+    # Comma-separated domains that always use Playwright (no shell detection)
+    playwright_force_domains: str = ""
+
     # Apify Integration
     apify_api_token: str | None = None
     apify_timeout_seconds: int = 300

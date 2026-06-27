@@ -8,6 +8,7 @@ import httpx
 
 from src.models import Event, Source
 from src.collectors.base import EventCollector
+from src.collectors.renderer import get_rendered_html
 from src.collectors.strategies import (
     StructuredMetadataStrategy,
     GenericListingPageStrategy,
@@ -20,9 +21,10 @@ logger = logging.getLogger(__name__)
 class GenericCollector(EventCollector):
     """Generic collector that tries multiple extraction strategies."""
 
-    def __init__(self, source: Source):
+    def __init__(self, source: Source, force_playwright: bool = False):
         """Initialize generic collector."""
         super().__init__(source)
+        self.force_playwright = force_playwright
         # Setup strategies in priority order
         self.strategies = [
             StructuredMetadataStrategy(),
@@ -45,7 +47,7 @@ class GenericCollector(EventCollector):
                         f"Crawling page: {page_url}",
                         extra={"source": self.source.source_name},
                     )
-                    html = await self._fetch_page(page_url)
+                    html = await self._fetch_page(page_url, force_playwright=self.force_playwright)
                     page_events = await self.extract_from_html(html)
                     events.extend(page_events)
                 except Exception as e:
@@ -72,9 +74,6 @@ class GenericCollector(EventCollector):
             f"{base_url}/calendar",  # Most common pattern
         ]
 
-    async def _fetch_page(self, url: str) -> str:
-        """Fetch a page and return HTML."""
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.get(url, follow_redirects=True)
-            response.raise_for_status()
-            return response.text
+    async def _fetch_page(self, url: str, force_playwright: bool = False) -> str:
+        """Fetch a page and return HTML, using Playwright for JS-heavy pages."""
+        return await get_rendered_html(url, force_playwright=force_playwright)
