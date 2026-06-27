@@ -227,6 +227,7 @@ class TestCalendarLinks:
 
         assert link.startswith("https://calendar.google.com/calendar/r/eventedit?")
         assert "text=Summer+Festival" in link
+        assert "ctz=America%2FNew_York" in link
         assert "location=Providence" in link
 
 

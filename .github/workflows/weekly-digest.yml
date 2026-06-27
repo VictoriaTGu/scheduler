@@ -33,7 +33,6 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PLAYWRIGHT_FORCE_DOMAINS: ${{ vars.PLAYWRIGHT_FORCE_DOMAINS }}
-          SOURCES_CSV_PATH: ./sources.csv
           EVENT_LOOKAHEAD_DAYS: 60
           DATABASE_URL: sqlite:///./events.db
           LOG_LEVEL: INFO

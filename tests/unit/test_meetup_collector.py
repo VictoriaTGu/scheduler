@@ -52,8 +52,8 @@ def test_jsonld_to_event_returns_none_when_no_start_date():
 
 def test_jsonld_to_event_converts_utc_to_local_time():
     item = dict(SAMPLE_JSONLD_EVENT)
-    item["startDate"] = "2026-06-27T22:00:00.000Z"
-    item["endDate"] = "2026-06-27T23:30:00.000Z"
+    item["startDate"] = "2099-06-27T22:00:00.000Z"
+    item["endDate"] = "2099-06-27T23:30:00.000Z"
 
     event = _jsonld_to_event(item, source_id=1)
     assert event is not None

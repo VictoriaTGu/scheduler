@@ -106,6 +106,75 @@ class TestFacebookEventsProvider:
         assert provider.name == "facebook_events"
         assert provider.apify_client == mock_client
 
+    def test_raw_to_event_accepts_name_and_utc_start_date(self):
+        """Facebook actor returns `name` + `utcStartDate`; both should map."""
+        provider = FacebookEventsProvider(Mock())
+        source = Source(
+            id=1,
+            source_name="Vegan Boston Events",
+            source_url="https://facebook.com/groups/vegan",
+            source_type="facebook_events",
+        )
+
+        raw_item = {
+            "id": "693853037156137",
+            "name": "Vegan Date Night",
+            "url": "https://www.facebook.com/events/693853037156137/",
+            "utcStartDate": "2099-06-27T23:00:00.000Z",
+            "imageUrl": "https://example.com/image.jpg",
+            "description": "Cooking class",
+            "address": "1005 Main St, Pawtucket, RI, US 02860",
+            "location": {
+                "name": "Hope Artiste Village",
+                "city": "Pawtucket, RI, United States",
+            },
+        }
+
+        event = provider._raw_to_event(raw_item, source)
+
+        assert event is not None
+        assert event.title == "Vegan Date Night"
+        assert event.event_url == "https://www.facebook.com/events/693853037156137/"
+        # 23:00Z should become 19:00 local Eastern time.
+        assert event.start_datetime.hour == 19
+        assert event.city == "Pawtucket"
+        assert event.state == "RI"
+        assert event.image_url == "https://example.com/image.jpg"
+
+    @pytest.mark.asyncio
+    async def test_discover_maps_items_and_returns_events(self):
+        """discover() should return events for valid Facebook payloads."""
+        mock_client = Mock()
+        mock_client.run_actor = AsyncMock(
+            return_value=[
+                {
+                    "id": "1",
+                    "name": "Community Vegan Potluck",
+                    "url": "https://www.facebook.com/events/1/",
+                    "utcStartDate": "2026-07-27T19:00:00.000Z",
+                    "location": {"name": "Park", "city": "Boston, MA, United States"},
+                }
+            ]
+        )
+        provider = FacebookEventsProvider(mock_client)
+
+        source = Source(
+            id=1,
+            source_name="Vegan Boston Events",
+            source_url="https://facebook.com/groups/vegan",
+            source_type="facebook_events",
+        )
+        search_config = {
+            "start_url": "https://www.facebook.com/groups/Vegan.Boston.Massachusetts/events",
+            "max_events": 50,
+            "days_ahead": 30,
+        }
+
+        events = await provider.discover(source, search_config)
+
+        assert len(events) == 1
+        assert events[0].title == "Community Vegan Potluck"
+
 
 class TestMeetupProvider:
     """Test Meetup provider."""

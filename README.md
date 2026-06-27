@@ -48,7 +48,6 @@ EMAIL_TO=your-email@example.com
 EMAIL_FROM=digest@yourdomain.com
 EMAIL_PROVIDER=sendgrid
 SENDGRID_API_KEY=sg_your_key_here
-SOURCES_CSV_PATH=./sources.csv
 EVENT_LOOKAHEAD_DAYS=60
 LOG_LEVEL=INFO
 ```
@@ -195,7 +194,6 @@ All operations are logged in JSON format to stdout:
 | SMTP_PORT | 587 | SMTP port (if using SMTP) |
 | SMTP_USER | - | SMTP username (if using SMTP) |
 | SMTP_PASSWORD | - | SMTP password (if using SMTP) |
-| SOURCES_CSV_PATH | ./sources.csv | Path to CSV file with event sources |
 | EVENT_LOOKAHEAD_DAYS | 60 | Days ahead to include in digest |
 | DATABASE_URL | sqlite:///./events.db | Database connection URL |
 | LOG_LEVEL | INFO | Logging level: DEBUG, INFO, WARNING, ERROR |

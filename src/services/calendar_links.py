@@ -29,6 +29,7 @@ def generate_calendar_link(event: Event) -> str:
     params = {
         "text": event.title,
         "dates": dates,
+        "ctz": "America/New_York",
         "location": f"{event.city}, {event.state}",
         "details": "\n".join(description_parts),
     }

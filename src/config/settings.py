@@ -21,9 +21,6 @@ class Settings(BaseSettings):
     smtp_user: str | None = None
     smtp_password: str | None = None
 
-    # Event Sources
-    sources_csv_path: str | None = "./sources.csv"
-
     # Event Extraction
     event_lookahead_days: int = 60
     llm_fallback_enabled: bool = False
